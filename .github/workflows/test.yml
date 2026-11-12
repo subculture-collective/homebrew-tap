@@ -37,7 +37,11 @@ jobs:
           HOMEBREW_NO_INSTALL_CLEANUP: "1"
         run: |
           set -euo pipefail
-          brew install --build-from-source subculture-collective/tap/pult
-          brew test subculture-collective/tap/pult
-          brew audit --strict subculture-collective/tap/pult
-          pult version
+          for f in Formula/*.rb; do
+            name="subculture-collective/tap/$(basename "${f}" .rb)"
+            echo "::group::${name}"
+            brew install --build-from-source "${name}"
+            brew test "${name}"
+            brew audit --strict "${name}"
+            echo "::endgroup::"
+          done
