@@ -15,6 +15,6 @@ test -n "${tag}" || { echo "sync-pult: no v* release found" >&2; exit 1; }
 tmp=$(mktemp)
 curl -fsSL -o "${tmp}" "https://git.subcult.tv/subculture-collective/pult/releases/download/${tag}/pult.rb"
 # Drop the template comment the release copy keeps on its first line.
-sed '1{/^# Template/d}' "${tmp}" > Formula/pult.rb
+sed '1{/^# Template/d;}' "${tmp}" > Formula/pult.rb
 rm -f "${tmp}"
 echo "${tag}"
