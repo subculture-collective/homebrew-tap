@@ -1,0 +1,59 @@
+name: update
+
+# Checks Pult's releases on git.subcult.tv every six hours. When the newest
+# release's formula differs from Formula/pult.rb, it builds and tests the new
+# formula on macOS and commits it to main only if that passes.
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update
+  cancel-in-progress: false
+
+jobs:
+  pult:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch the newest formula
+        id: sync
+        run: |
+          set -euo pipefail
+          tag=$(scripts/sync-pult.sh)
+          echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+          if git diff --quiet -- Formula/pult.rb; then
+            echo "changed=false" >> "${GITHUB_OUTPUT}"
+            echo "Formula/pult.rb already matches ${tag}."
+          else
+            echo "changed=true" >> "${GITHUB_OUTPUT}"
+            git diff -- Formula/pult.rb
+          fi
+      - name: Install, test and audit the new formula
+        if: steps.sync.outputs.changed == 'true'
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+          HOMEBREW_NO_INSTALL_CLEANUP: "1"
+        run: |
+          set -euo pipefail
+          taps="$(brew --repository)/Library/Taps/subculture-collective"
+          mkdir -p "${taps}"
+          ln -sfn "${GITHUB_WORKSPACE}" "${taps}/homebrew-tap"
+          brew install --build-from-source subculture-collective/tap/pult
+          brew test subculture-collective/tap/pult
+          brew audit --strict subculture-collective/tap/pult
+      - name: Commit
+        if: steps.sync.outputs.changed == 'true'
+        env:
+          TAG: ${{ steps.sync.outputs.tag }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "pult ${TAG#v}" -- Formula/pult.rb
+          git push origin HEAD:main

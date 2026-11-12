@@ -1,0 +1,43 @@
+name: test
+
+# Builds every formula from source and runs its test and audit, on macOS
+# and on Linux.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  formula:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Put Homebrew on PATH and link this checkout as the tap
+        run: |
+          set -euo pipefail
+          if [ "${RUNNER_OS}" = Linux ]; then
+            eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+            echo "$(brew --prefix)/bin" >> "${GITHUB_PATH}"
+          fi
+          taps="$(brew --repository)/Library/Taps/subculture-collective"
+          mkdir -p "${taps}"
+          ln -sfn "${GITHUB_WORKSPACE}" "${taps}/homebrew-tap"
+      - name: Install, test and audit
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+          HOMEBREW_NO_INSTALL_CLEANUP: "1"
+        run: |
+          set -euo pipefail
+          brew install --build-from-source subculture-collective/tap/pult
+          brew test subculture-collective/tap/pult
+          brew audit --strict subculture-collective/tap/pult
+          pult version
