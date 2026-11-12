@@ -9,7 +9,9 @@ class Pult < Formula
   depends_on "go" => :build
 
   resource "catalog" do
-    url "https://git.subcult.tv/subculture-collective/pult/releases/download/v0.3.0/pult-0.3.0-catalog.db.zst"
+    # Homebrew would decompress a .zst on staging; Pult embeds it compressed.
+    url "https://git.subcult.tv/subculture-collective/pult/releases/download/v0.3.0/pult-0.3.0-catalog.db.zst",
+        using: :nounzip
     sha256 "5c8aa7a5bf4d96964c6202966e6a33de55bb8776d61842cd94c548f5006ff477"
   end
 

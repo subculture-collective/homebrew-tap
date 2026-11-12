@@ -25,9 +25,15 @@ jobs:
         id: sync
         run: |
           set -euo pipefail
+          have=$(sed -n 's|^  url ".*/pult-\(.*\)-src\.tar\.gz"$|\1|p' Formula/pult.rb)
           tag=$(scripts/sync-pult.sh)
           echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
-          if git diff --quiet -- Formula/pult.rb; then
+          # A fix made here for the current release stays until the next one.
+          if [ "v${have}" = "${tag}" ]; then
+            git checkout -- Formula/pult.rb
+            echo "changed=false" >> "${GITHUB_OUTPUT}"
+            echo "Formula/pult.rb is already at ${tag}."
+          elif git diff --quiet -- Formula/pult.rb; then
             echo "changed=false" >> "${GITHUB_OUTPUT}"
             echo "Formula/pult.rb already matches ${tag}."
           else
